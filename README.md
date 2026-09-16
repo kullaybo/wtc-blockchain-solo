@@ -1,3 +1,5 @@
+WTC-SDM42MRX
+
 # Sample Hardhat 3 Project (`node:test` and `viem`)
 
 This project showcases a Hardhat 3 project using the native Node.js test runner (`node:test`) and the `viem` library for Ethereum interactions.
@@ -55,3 +57,4 @@ After setting the variable, you can run the deployment with the Sepolia network:
 ```shell
 npx hardhat ignition deploy --network sepolia ignition/modules/Counter.ts
 ```
+WTC-SDM42MRX
