@@ -44,5 +44,6 @@
   },
   "devDependencies": {
     "hardhat": "^3.16.0"
-  }
+  },
+  "type": "module"
 }
