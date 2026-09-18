@@ -2,28 +2,53 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import hre from "hardhat";
 
-test("VotingDAO - Core Functionality", async (t) => {
-    
-    await t.test("Should deploy and create a proposal successfully", async () => {
-        // 1. Deploy the contract using Viem
-        const votingDAO = await hre.viem.deployContract("VotingDAO");
-        
-        // 2. Create a proposal (10 minutes duration)
-        // Note: Viem requires BigInts (adding 'n') for uint256 values
-        await votingDAO.write.createProposal(["Fund the new WTC campus coffee machine", 10n]);
-        
-        // 3. Read the proposal count to ensure it incremented
-        const count = await votingDAO.read.proposalCount();
-        assert.equal(count, 1n, "Proposal count should be 1");
-        
-        // 4. Read the proposal details and verify
-        const proposal = await votingDAO.read.proposals([1n]);
-        
-        // proposal returns a tuple (array) matching the struct:
-        // [id, description, voteCount, deadline, executed]
-        assert.equal(proposal[1], "Fund the new WTC campus coffee machine");
-        assert.equal(proposal[2], 0n, "Initial vote count should be 0");
-        assert.equal(proposal[4], false, "Should not be executed yet");
-    });
+test("VotingDAO Smart Contract Suite", async (t) => {
+  await t.test("Should create a proposal and verify initial state", async () => {
+    const votingDAO = await hre.viem.deployContract("VotingDAO");
 
+    // Create proposal with 30 minute voting window
+    await votingDAO.write.createProposal(["Upgrade campus workstations", 30n]);
+
+    const count = await votingDAO.read.proposalCount();
+    assert.equal(count, 1n, "Proposal count should be 1");
+
+    const proposal = await votingDAO.read.proposals([1n]);
+    assert.equal(proposal[1], "Upgrade campus workstations");
+    assert.equal(proposal[2], 0n, "Initial vote count must be 0");
+    assert.equal(proposal[4], false, "Proposal should not be executed");
+  });
+
+  await t.test("Should allow accounts to vote and increment vote count", async () => {
+    const votingDAO = await hre.viem.deployContract("VotingDAO");
+    const [owner, voter1] = await hre.viem.getWalletClients();
+
+    await votingDAO.write.createProposal(["Fund solar backup array", 60n]);
+
+    // Vote from voter1 wallet
+    await votingDAO.write.vote([1n], { account: voter1.account });
+
+    const proposal = await votingDAO.read.proposals([1n]);
+    assert.equal(proposal[2], 1n, "Vote count should increment to 1");
+
+    const hasVoted = await votingDAO.read.hasVoted([1n, voter1.account.address]);
+    assert.equal(hasVoted, true, "Voter status should be recorded");
+  });
+
+  await t.test("Should revert when an account votes twice", async () => {
+    const votingDAO = await hre.viem.deployContract("VotingDAO");
+    const [voter] = await hre.viem.getWalletClients();
+
+    await votingDAO.write.createProposal(["Setup local testnet faucet", 60n]);
+
+    // First vote succeeds
+    await votingDAO.write.vote([1n], { account: voter.account });
+
+    // Duplicate vote must throw
+    await assert.rejects(
+      async () => {
+        await votingDAO.write.vote([1n], { account: voter.account });
+      },
+      /Already voted/
+    );
+  });
 });
